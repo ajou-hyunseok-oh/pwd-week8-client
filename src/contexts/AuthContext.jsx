@@ -1,97 +1,138 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authAPIService } from '../services/authApi';
-
+/* eslint-disable react-refresh/only-export-components -- useAuth와 Provider를 함께 제공합니다. */
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+} from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { authAPIService } from "../services/authApi";
+import { supabase } from "../config/supabase";
 const AuthContext = createContext();
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth는 AuthProvider 내에서 사용되어야 합니다.');
-  }
+  if (!context) throw new Error("AuthProvider가 필요합니다.");
   return context;
 };
-
+const messageOf = (error) =>
+  error.response?.data?.message || error.message || "인증 요청에 실패했습니다.";
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // 앱 시작 시 현재 로그인 상태 확인
-  useEffect(() => {
-    checkAuthStatus();
+  const [authError, setAuthError] = useState("");
+  const queryClient = useQueryClient();
+  const checkAuthStatus = useCallback(async () => {
+    const response = await authAPIService.getCurrentUser();
+    setUser(response.data.user);
+    setAuthError("");
+    return response.data.user;
   }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      setLoading(true);
-      const response = await authAPIService.getCurrentUser();
-      if (response.data.success) {
-        setUser(response.data.data.user);
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.log('로그인 상태 확인 실패:', error);
-      setUser(null);
-      setIsAuthenticated(false);
-    } finally {
+  useEffect(() => {
+    if (!supabase) {
       setLoading(false);
+      return;
     }
-  };
-
+    let alive = true;
+    let generation = 0;
+    let previousUserId;
+    const applySession = async (session) => {
+      if (!alive) return;
+      const ticket = ++generation;
+      if (session?.user.id !== previousUserId) {
+        queryClient.clear();
+        previousUserId = session?.user.id;
+      }
+      if (!session) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const response = await authAPIService.getCurrentUser();
+        if (alive && ticket === generation) {
+          setUser(response.data.user);
+          setAuthError("");
+        }
+      } catch (error) {
+        if (alive && ticket === generation) {
+          setUser(null);
+          setAuthError(messageOf(error));
+        }
+      } finally {
+        if (alive && ticket === generation) setLoading(false);
+      }
+    };
+    // Auth 콜백의 SDK 잠금 밖에서 프로필을 읽습니다.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setTimeout(() => {
+        void applySession(session);
+      }, 0);
+    });
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!alive) return;
+      if (error) {
+        setAuthError(error.message);
+        setLoading(false);
+        return;
+      }
+      void applySession(data.session);
+    });
+    return () => {
+      alive = false;
+      generation++;
+      subscription.unsubscribe();
+    };
+  }, [queryClient]);
   const login = async (credentials) => {
     try {
-      const response = await authAPIService.login(credentials);
-      if (response.data.success) {
-        setUser(response.data.data.user);
-        setIsAuthenticated(true);
-        return { success: true, message: response.data.message };
-      }
+      await authAPIService.login(credentials);
+      await checkAuthStatus();
+      return { success: true, message: "로그인되었습니다." };
     } catch (error) {
-      const message = error.response?.data?.message || '로그인에 실패했습니다.';
-      return { success: false, message };
+      await supabase?.auth.signOut({ scope: "local" });
+      return { success: false, message: messageOf(error) };
     }
   };
-
-  const register = async (userData) => {
+  const register = async (data) => {
     try {
-      const response = await authAPIService.register(userData);
-      if (response.data.success) {
-        setUser(response.data.data.user);
-        setIsAuthenticated(true);
-        return { success: true, message: response.data.message };
-      }
+      const result = await authAPIService.register(data);
+      if (result.session) await checkAuthStatus();
+      return {
+        success: true,
+        needsConfirmation: !result.session,
+        message: result.session
+          ? "회원가입이 완료되었습니다."
+          : "가입 확인 메일을 확인한 뒤 로그인하세요.",
+      };
     } catch (error) {
-      const message = error.response?.data?.message || '회원가입에 실패했습니다.';
-      return { success: false, message };
+      return { success: false, message: messageOf(error) };
     }
   };
-
   const logout = async () => {
-    try {
-      await authAPIService.logout();
-    } catch (error) {
-      console.log('로그아웃 요청 실패:', error);
-    } finally {
-      setUser(null);
-      setIsAuthenticated(false);
-    }
+    await authAPIService.logout();
+    setUser(null);
+    setAuthError("");
+    queryClient.clear();
   };
-
-  // 관리자 권한 확인 함수
-  const isAdmin = () => {
-    return user && user.userType === 'admin';
-  };
-
-  const value = {
-    user,
-    isAuthenticated,
-    loading,
-    login,
-    register,
-    logout,
-    checkAuthStatus,
-    isAdmin,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        authError,
+        isAuthenticated: Boolean(user),
+        login,
+        register,
+        logout,
+        checkAuthStatus,
+        isAdmin: () => user?.userType === "admin",
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

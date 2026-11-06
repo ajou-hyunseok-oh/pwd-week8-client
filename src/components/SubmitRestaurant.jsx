@@ -1,3 +1,4 @@
+import { useAuth } from '../contexts/AuthContext';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import styled from '@emotion/styled';
@@ -120,6 +121,7 @@ const SuccessMessage = styled.div`
 `;
 
 function SubmitRestaurant() {
+  const { user } = useAuth();
   const [submitted, setSubmitted] = useState(false);
   const { register, handleSubmit, formState: { errors, isSubmitting }, reset } = useForm();
 
@@ -141,8 +143,6 @@ function SubmitRestaurant() {
         priceRange: data.priceRange?.trim() || undefined,
         recommendedMenu: recommendedMenuArray.length ? recommendedMenuArray : undefined,
         review: data.review?.trim() || undefined,
-        submitterName: data.submitterName?.trim() || undefined,
-        submitterEmail: data.submitterEmail?.trim() || undefined,
       };
 
       await submissionAPI.createSubmission(payload);
@@ -151,7 +151,7 @@ function SubmitRestaurant() {
       reset();
       setTimeout(() => setSubmitted(false), 5000);
     } catch (error) {
-      toast.error('제출 중 오류가 발생했습니다.');
+      toast.error(error.userMessage || '제출 중 오류가 발생했습니다.');
     }
   };
 
@@ -255,32 +255,7 @@ function SubmitRestaurant() {
           />
         </FormGroup>
 
-        <FormGroup>
-          <Label htmlFor="submitterName">제보자 이름</Label>
-          <Input
-            id="submitterName"
-            {...register("submitterName")}
-            placeholder="선택사항"
-          />
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="submitterEmail">이메일</Label>
-          <Input
-            id="submitterEmail"
-            type="email"
-            {...register("submitterEmail", {
-              pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: "올바른 이메일 형식이 아닙니다"
-              }
-            })}
-            placeholder="선택사항 (답변받을 이메일)"
-          />
-          {errors.submitterEmail && (
-            <ErrorMessage>{errors.submitterEmail.message}</ErrorMessage>
-          )}
-        </FormGroup>
+        <p>제보자: {user?.name} ({user?.email})</p>
 
         <SubmitButton type="submit" disabled={isSubmitting}>
           {isSubmitting ? '제출 중...' : '맛집 제보하기'}

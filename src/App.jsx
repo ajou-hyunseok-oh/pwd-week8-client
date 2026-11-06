@@ -26,6 +26,7 @@ import Header from './components/Header';
 import NotFound from './components/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import AuthCallbackHandler from './components/AuthCallbackHandler';
 
 // Styles
 import GlobalStyles from './styles/GlobalStyles';
@@ -45,6 +46,8 @@ function App() {
   useEffect(() => {
     testConnection();
   }, []);
+
+  if (window.location.pathname === '/auth/callback') return <AuthCallbackHandler />;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -102,7 +105,7 @@ function App() {
               </Routes>
             </main>
             <footer className="footer">
-              <p>© 2025 Ajou Campus Foodmap | Made with React</p>
+              <p>Ajou Campus Foodmap · Week 8 · Supabase</p>
             </footer>
           </div>
           <ToastContainer 

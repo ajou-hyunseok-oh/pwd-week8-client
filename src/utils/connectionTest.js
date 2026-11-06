@@ -8,7 +8,7 @@ export const testConnection = async () => {
     const response = await fetch(`${apiUrl}/health`, {
       method: 'GET',
       mode: 'cors',
-      credentials: 'include',
+      credentials: 'omit',
     });
     
     if (!response.ok) {
@@ -42,7 +42,7 @@ export const testApiEndpoints = async () => {
       const response = await fetch(`${apiUrl}${endpoint}`, {
         method: 'GET',
         mode: 'cors',
-        credentials: 'include',
+        credentials: 'omit',
       });
       
       results[endpoint] = {

@@ -1,3 +1,4 @@
+import ProfileForm from '../components/ProfileForm';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from '@emotion/styled';
@@ -85,6 +86,7 @@ const ProviderBadge = styled.span`
     switch (props.provider) {
       case 'google':
         return '#db4437';
+      case 'custom:naver':
       case 'naver':
         return '#03c75a';
       case 'admin':
@@ -180,8 +182,11 @@ function DashboardPage() {
 
   const getProviderDisplayName = (provider) => {
     switch (provider) {
+      case 'email':
+        return '이메일';
       case 'google':
         return '구글';
+      case 'custom:naver':
       case 'naver':
         return '네이버';
       case 'local':
@@ -225,7 +230,7 @@ function DashboardPage() {
           <InfoRow>
             <FaEnvelope />
             <InfoLabel>이메일:</InfoLabel>
-            <InfoValue>{user.email}</InfoValue>
+            <InfoValue>{user.email || '미제공'}</InfoValue>
           </InfoRow>
           
           <InfoRow>
@@ -254,6 +259,8 @@ function DashboardPage() {
             <InfoValue>{formatDate(user.createdAt)}</InfoValue>
           </InfoRow>
         </UserInfo>
+
+        <ProfileForm key={user.id} />
 
         <ActionButtons>
           <ActionButton 

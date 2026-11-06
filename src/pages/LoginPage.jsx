@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import styled from '@emotion/styled';
-import { FaGoogle, FaEye, FaEyeSlash } from 'react-icons/fa';
-import { SiNaver } from 'react-icons/si';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { ClipLoader } from 'react-spinners';
 import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
-import { authAPIService } from '../services/authApi';
+import SocialLoginButtons from '../components/SocialLoginButtons';
 
 const LoginContainer = styled.div`
   max-width: 400px;
@@ -108,62 +107,6 @@ const SubmitButton = styled.button`
   }
 `;
 
-const Divider = styled.div`
-  display: flex;
-  align-items: center;
-  margin: 1.5rem 0;
-  
-  &::before,
-  &::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #e0e0e0;
-  }
-  
-  span {
-    margin: 0 1rem;
-    color: #666;
-    font-size: 0.875rem;
-  }
-`;
-
-const SocialButton = styled.a`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e0e0e0;
-  background: white;
-  color: #333;
-  text-decoration: none;
-  border-radius: 8px;
-  transition: all 0.3s;
-  margin-bottom: 0.75rem;
-  
-  &:hover {
-    border-color: #667eea;
-    background: #f8f9ff;
-  }
-  
-  &.google {
-    &:hover {
-      border-color: #db4437;
-      background: #fff5f5;
-    }
-  }
-  
-  &.naver {
-    &:hover {
-      border-color: #03c75a;
-      background: #f0f9f0;
-    }
-  }
-  
-`;
-
 const LinkText = styled.div`
   text-align: center;
   margin-top: 1.5rem;
@@ -195,7 +138,7 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, authError } = useAuth();
   
   const {
     register,
@@ -203,15 +146,15 @@ function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm();
 
+  const errorFromUrl = searchParams.get('error');
+
   // 이미 로그인된 경우 리다이렉트
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !errorFromUrl) {
       navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, errorFromUrl, navigate]);
 
-  // URL 쿼리 파라미터에서 에러 메시지 확인
-  const errorFromUrl = searchParams.get('error');
 
   const onSubmit = async (data) => {
     const result = await login(data);
@@ -227,12 +170,13 @@ function LoginPage() {
   return (
     <LoginContainer>
       <Title>로그인</Title>
+      {authError && <AlertMessage className="error">{authError}</AlertMessage>}
       
       {errorFromUrl && (
         <AlertMessage className="error">
           {errorFromUrl === 'server_error' && '서버 오류가 발생했습니다.'}
           {errorFromUrl === 'login_error' && '로그인 처리 중 오류가 발생했습니다.'}
-          {errorFromUrl !== 'server_error' && errorFromUrl !== 'login_error' && decodeURIComponent(errorFromUrl)}
+          {errorFromUrl !== 'server_error' && errorFromUrl !== 'login_error' && errorFromUrl}
         </AlertMessage>
       )}
       
@@ -293,17 +237,7 @@ function LoginPage() {
         </SubmitButton>
       </Form>
 
-      <Divider>
-        <span>또는</span>
-      </Divider>
-
-      <SocialButton href={authAPIService.getGoogleLoginUrl()} className="google">
-        <FaGoogle /> 구글로 로그인
-      </SocialButton>
-
-      <SocialButton href={authAPIService.getNaverLoginUrl()} className="naver">
-        <SiNaver /> 네이버로 로그인
-      </SocialButton>
+      <SocialLoginButtons />
 
       <LinkText>
         아직 계정이 없으신가요?{' '}

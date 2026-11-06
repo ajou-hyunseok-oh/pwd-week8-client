@@ -1,47 +1,53 @@
-// 기존 api.jsx에서 api 인스턴스를 가져와서 사용
-import api from './api';
-import { apiUrl } from '../config/environment';
-
-// 서버 URL 설정 (환경별 자동 감지)
-const API_BASE_URL = apiUrl;
-
-// 인증 관련 API 함수들
+import api, { publicApi } from "./api";
+import { requireSupabase } from "../config/supabase";
 export const authAPIService = {
-  // 회원가입
-  register: async (userData) => {
-    return await api.post('/api/auth/register', userData);
+  getProviders: async () => (await publicApi.get("/api/auth/providers")).data,
+  register: async ({ email, password, name }) => {
+    const { data, error } = await requireSupabase().auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { name: name.trim() },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) throw error;
+    return data;
   },
-
-  // 로그인
-  login: async (credentials) => {
-    return await api.post('/api/auth/login', credentials);
+  login: async ({ email, password }) => {
+    const { data, error } = await requireSupabase().auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (error) throw error;
+    return data;
   },
-
-  // 로그아웃
   logout: async () => {
-    return await api.post('/api/auth/logout');
+    const { error } = await requireSupabase().auth.signOut({ scope: "local" });
+    if (error) throw error;
   },
-
-  // 현재 사용자 정보 조회
-  getCurrentUser: async () => {
-    return await api.get('/api/auth/me');
+  getCurrentUser: async () => (await api.get("/api/auth/me")).data,
+  getAllUsers: async () => (await api.get("/api/users/all")).data,
+  changeUserType: async (userId, userType) =>
+    (await api.put(`/api/users/${userId}/type`, { userType })).data,
+  updateProfile: async (payload) =>
+    (await api.put("/api/users/profile", payload)).data,
+  deactivateAccount: async () => (await api.delete("/api/users/account")).data,
+  changePassword: async (currentPassword, password) => {
+    const { error } = await requireSupabase().auth.updateUser({
+      current_password: currentPassword,
+      password,
+    });
+    if (error) throw error;
   },
-
-  // OAuth 로그인 URL 생성
-  getGoogleLoginUrl: () => `${API_BASE_URL}/api/auth/google`,
-  getNaverLoginUrl: () => `${API_BASE_URL}/api/auth/naver`,
-
-  // 관리자 전용 API
-  // 모든 사용자 목록 조회
-  getAllUsers: async () => {
-    return await api.get('/api/users/all');
-  },
-
-  // 사용자 유형 변경
-  changeUserType: async (userId, userType) => {
-    return await api.put(`/api/users/${userId}/type`, { userType });
+  socialLogin: async (provider) => {
+    if (!["google", "custom:naver"].includes(provider))
+      throw new Error("지원하지 않는 로그인 방식입니다.");
+    const { error } = await requireSupabase().auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) throw error;
   },
 };
-
-// 기존 api 인스턴스를 authAPI로도 내보내기 (하위 호환성)
 export { api as authAPI };

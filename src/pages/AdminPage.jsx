@@ -1,3 +1,4 @@
+import { useAuth } from '../contexts/AuthContext';
 import React, { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -120,6 +121,7 @@ const ProviderBadge = styled.span`
   background: ${props => {
     switch (props.provider) {
       case 'google': return '#db4437';
+      case 'custom:naver':
       case 'naver': return '#03c75a';
       default: return '#667eea';
     }
@@ -127,6 +129,7 @@ const ProviderBadge = styled.span`
 `;
 
 function AdminPage() {
+  const { checkAuthStatus } = useAuth();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('restaurants');
@@ -161,6 +164,7 @@ function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
       reset();
     },
+    onError: (error) => toast.error(error.userMessage || error.message),
   });
 
   const updateMutation = useMutation({
@@ -169,6 +173,7 @@ function AdminPage() {
       toast.success('수정 완료');
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
     },
+    onError: (error) => toast.error(error.userMessage || error.message),
   });
 
   const deleteMutation = useMutation({
@@ -178,12 +183,14 @@ function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
       if (selected?.id) setSelected(null);
     },
+    onError: (error) => toast.error(error.userMessage || error.message),
   });
 
   const changeUserTypeMutation = useMutation({
     mutationFn: ({ userId, userType }) => authAPIService.changeUserType(userId, userType),
     onSuccess: () => {
       toast.success('사용자 유형이 변경되었습니다.');
+      void checkAuthStatus().catch(error => toast.error(error.userMessage || error.message));
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
@@ -235,10 +242,10 @@ function AdminPage() {
 
   const onChangeUserType = async (user, newUserType) => {
     const userTypeText = newUserType === 'admin' ? '관리자' : '일반 사용자';
-    if (!confirm(`${user.name}님의 유형을 ${userTypeText}로 변경할까요?`)) return;
+    if (!confirm(`${user.name}님의 유형을 ${userTypeText}로 변경할까요?\nUUID: ${user.id}`)) return;
     
     try {
-      await changeUserTypeMutation.mutateAsync({ userId: user._id, userType: newUserType });
+      await changeUserTypeMutation.mutateAsync({ userId: user.id, userType: newUserType });
     } catch (error) {
       toast.error(error.userMessage || '사용자 유형 변경에 실패했습니다.');
     }
@@ -377,6 +384,7 @@ function AdminPage() {
             <thead>
               <tr>
                 <th>이름</th>
+                <th>사용자 UUID</th>
                 <th>이메일</th>
                 <th>계정 종류</th>
                 <th>사용자 유형</th>
@@ -386,13 +394,14 @@ function AdminPage() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user._id}>
+                <tr key={user.id}>
                   <td>{user.name}</td>
-                  <td>{user.email}</td>
+                  <td><code>{user.id}</code></td>
+                  <td>{user.email || '미제공'}</td>
                   <td>
                     <ProviderBadge provider={user.provider}>
                       {user.provider === 'google' ? '구글' : 
-                       user.provider === 'naver' ? '네이버' : '이메일'}
+                       ['naver', 'custom:naver'].includes(user.provider) ? '네이버' : '이메일'}
                     </ProviderBadge>
                   </td>
                   <td>

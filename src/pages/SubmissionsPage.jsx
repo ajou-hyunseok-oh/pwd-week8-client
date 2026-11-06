@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { submissionAPI, restaurantAPI } from '../services/api';
+import { submissionAPI } from '../services/api';
 import { toast } from 'react-toastify';
 
 const Container = styled.div`
@@ -67,23 +67,13 @@ function SubmissionsPage() {
   const items = data?.data || [];
 
   const approveMutation = useMutation({
-    mutationFn: async (submission) => {
-      const payload = {
-        name: submission.restaurantName,
-        category: submission.category,
-        location: submission.location,
-        priceRange: submission.priceRange || undefined,
-        description: submission.review || undefined,
-        recommendedMenu: Array.isArray(submission.recommendedMenu) ? submission.recommendedMenu : undefined,
-      };
-      await restaurantAPI.createRestaurant(payload);
-      await submissionAPI.updateSubmission(submission.id, { status: 'approved' });
-    },
+    mutationFn: (submission) => submissionAPI.approveSubmission(submission.id),
     onSuccess: () => {
       toast.success('승인하여 레스토랑에 등록했습니다.');
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
       queryClient.invalidateQueries({ queryKey: ['restaurants'] });
-    }
+    },
+    onError: (error) => toast.error(error.userMessage || error.message)
   });
 
   const rejectMutation = useMutation({
@@ -91,7 +81,8 @@ function SubmissionsPage() {
     onSuccess: () => {
       toast.info('제보를 거절했습니다.');
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
-    }
+    },
+    onError: (error) => toast.error(error.userMessage || error.message)
   });
 
   const deleteMutation = useMutation({
@@ -99,7 +90,8 @@ function SubmissionsPage() {
     onSuccess: () => {
       toast.info('제보를 삭제했습니다.');
       queryClient.invalidateQueries({ queryKey: ['submissions'] });
-    }
+    },
+    onError: (error) => toast.error(error.userMessage || error.message)
   });
 
   const statuses = useMemo(() => [
@@ -152,8 +144,8 @@ function SubmissionsPage() {
               <td>
                 <div style={{ marginBottom: '0.5rem' }}>상태: {it.status}</div>
                 <Actions>
-                  <Button onClick={() => approveMutation.mutate(it)} disabled={it.status === 'approved'}>승인</Button>
-                  <Button onClick={() => rejectMutation.mutate({ id: it.id })} disabled={it.status === 'rejected'}>거절</Button>
+                  <Button onClick={() => approveMutation.mutate(it)} disabled={it.status !== 'pending' || approveMutation.isPending}>승인</Button>
+                  <Button onClick={() => rejectMutation.mutate({ id: it.id })} disabled={it.status !== 'pending' || rejectMutation.isPending}>거절</Button>
                   <Danger onClick={() => { if (confirm('삭제하시겠습니까?')) deleteMutation.mutate(it.id); }}>삭제</Danger>
                 </Actions>
               </td>
