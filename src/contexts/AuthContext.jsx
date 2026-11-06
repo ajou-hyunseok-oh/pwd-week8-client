@@ -90,6 +90,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       await authAPIService.login(credentials);
+    } catch (error) {
+      // 가입 확인 대기 중에는 이메일 링크에 사용할 PKCE 검증값을 유지합니다.
+      return { success: false, message: messageOf(error) };
+    }
+    try {
       await checkAuthStatus();
       return { success: true, message: "로그인되었습니다." };
     } catch (error) {

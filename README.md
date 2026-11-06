@@ -66,7 +66,7 @@ npm run dev -- --host 127.0.0.1 --strictPort
 | Google·네이버가 결과를 보낼 공급자 콜백 | `https://your-project-ref.supabase.co/auth/v1/callback` |
 | Supabase가 React로 돌려보낼 주소 | `http://127.0.0.1:5173/auth/callback` |
 
-React만 로컬에서 실행하고 Supabase는 클라우드 프로젝트를 사용합니다. 다른 자료의 `http://127.0.0.1:54321/auth/v1/callback`은 **로컬 Supabase CLI** 예시이므로 이 실습에 복사하지 않습니다.
+React와 Express는 로컬에서 실행하고 Supabase는 본인의 클라우드 프로젝트를 사용합니다. 공급자 콜백 주소는 이 프로젝트의 Dashboard에서 복사합니다.
 
 #### B. Supabase에 React 복귀 주소 등록
 
@@ -418,6 +418,7 @@ npm run build
 | --- | --- |
 | Supabase 설정 오류 | URL·Publishable key, Vite 재시작 |
 | 회원가입 직후 로그인되지 않음 | 이메일 확인 안내·메일 수신·허용 복귀 URL |
+| 메일을 확인하기 전에 로그인을 시도함 | 가입을 시작한 브라우저 프로필에서 기존 확인 메일을 엽니다. 확인 전 비밀번호 로그인이 거절되어도 이 링크로 가입을 마칠 수 있습니다. |
 | `Email address not authorized` 또는 메일 발송 제한 | 기본 SMTP라면 Supabase 조직 Team에 등록된 주소를 사용합니다. 다른 주소는 별도 SMTP를 연결한 뒤 시도하고, `429`라면 제한 시간이 지난 뒤 재시도합니다. |
 | API 401 | SDK 세션·Authorization 헤더 |
 | API 403 | 사용자 역할·활성 상태, 화면 로그인과 구별 |
