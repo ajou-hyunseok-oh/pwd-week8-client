@@ -15,6 +15,9 @@ export const authAPIService = {
     return data;
   },
   login: async ({ email, password }) => {
+    // [이론: 계정·인증] 이메일로 확인할 계정을 지정하고 비밀번호를 증거로 제시합니다.
+    // 비밀번호의 해시·솔트 처리와 저장값 대조는 Supabase Auth가 담당합니다.
+    // 앱은 인증 서비스가 반환한 성공·실패를 처리합니다.
     const { data, error } = await requireSupabase().auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -23,6 +26,9 @@ export const authAPIService = {
     return data;
   },
   logout: async () => {
+    // [이론: 로그아웃·철회] local은 현재 세션을 대상으로 하는 로그아웃 범위입니다.
+    // SDK가 보관 상태를 정리하고 해당 세션의 갱신 자격 철회를 요청합니다.
+    // 이미 발급된 액세스 토큰은 만료 전까지 유효할 수 있습니다.
     const { error } = await requireSupabase().auth.signOut({ scope: "local" });
     if (error) throw error;
   },

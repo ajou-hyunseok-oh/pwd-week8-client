@@ -20,6 +20,9 @@ export const publicApi = axios.create({
 
 api.interceptors.request.use(
   async (config) => {
+    // [이론: HTTP의 무상태성] 이전 로그인 결과가 새 요청에 자동 연결되지는 않습니다.
+    // getSession()은 저장된 세션을 읽고 필요 시 갱신하는 클라이언트 동작입니다.
+    // 매 요청의 Authorization 헤더에 Bearer 방식으로 토큰을 제시하고, 서버가 검증해 사용자를 확인합니다.
     const { data } = supabase ? await supabase.auth.getSession() : { data: {} };
     if (data.session) config.headers.Authorization = `Bearer ${data.session.access_token}`;
     console.log('API request:', config.method?.toUpperCase(), `${config.baseURL}${config.url}`);

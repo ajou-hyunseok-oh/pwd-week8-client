@@ -50,6 +50,8 @@ export const AuthProvider = ({ children }) => {
       }
       setLoading(true);
       try {
+        // [이론: 인증 결과] 브라우저에 세션이 남아 있어도 그 값만으로 앱 사용자를 확정하지 않습니다.
+        // /me가 토큰을 검증해 확인한 사용자에 연결된 프로필을 화면의 사용자 상태로 사용합니다.
         const response = await authAPIService.getCurrentUser();
         if (alive && ticket === generation) {
           setUser(response.data.user);
@@ -121,6 +123,8 @@ export const AuthProvider = ({ children }) => {
     await authAPIService.logout();
     setUser(null);
     setAuthError("");
+    // [이론: 상태 정리] 캐시 삭제는 이전 사용자의 화면 데이터를 정리하는 처리입니다.
+    // 토큰의 갱신 자격 철회는 위에서 호출한 인증 서비스가 담당합니다.
     queryClient.clear();
   };
   return (
